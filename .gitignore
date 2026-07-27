@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+*.egg-info/
+
+# Environments / secrets
+.env
+.venv/
+env/
+
+# Data — don't commit bulk/raw data (keep it out of git)
+data/raw/
+data/processed/
+*.shp
+*.geojson
+*.parquet
+# (force-add small samples or crosswalks with: git add -f path)
+
+# dbt
+target/
+dbt_packages/
+logs/
+
+# OS / editor
+.DS_Store
+.vscode/
+*.log
