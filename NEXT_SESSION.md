@@ -51,3 +51,21 @@ into "I understand it."
 - git pull first thing; git push before closing
 - conda activate detroit-property
 - Kernel = detroit-property (top-right in VS Code)
+
+
+## Step 2 progress (Fri - 7/31/2026)
+- Found Parcels (current) dataset — GeoService endpoint saved in step2_parcels.ipynb
+- Smoke test PASSED (5 rows, 52 cols). Confirmed we have:
+  - amt_assessed_value + amt_assessed_value_previous (the spine + built-in prior year!)
+  - amt_taxable_value + _previous
+  - neighborhood column (no spatial join needed just to group!)
+  - property_class (for residential filter — downstream)
+  - real geometry (Shape__Area/Length present)
+
+## OPEN DECISION to revisit
+- No land-value / building-value split in this dataset — just one amt_assessed_value.
+  Brief had LAND value as headline metric. Decide: hunt for a land-value source,
+  or make total assessed value the spine + land value a stretch goal.
+
+## Next up — STEP 2 back half (needs full 2hr)
+- Flip returnGeometry=TRUE, switch to geopandas, pull parcels WITH shapes into raw.parcels (PostGIS)
