@@ -69,3 +69,41 @@ into "I understand it."
 
 ## Next up — STEP 2 back half (needs full 2hr)
 - Flip returnGeometry=TRUE, switch to geopandas, pull parcels WITH shapes into raw.parcels (PostGIS)
+
+
+## Session update (Mon 8/3/2026)
+- Step 0 notebook was committed EMPTY on GitHub — recovered from an unsaved
+VS Code tab and committed for real. Lesson: Ctrl+S + read `git status` before every commit.
+- PROJ bug fixed — PROJ_LIB pointed at PostGIS's old proj.db. Fix now lives at
+top of step2_parcels.ipynb (must run before imports).
+- Parcels geometry PROBED and confirmed: Polygons, maxRecordCount 1000,
+stored EPSG:3857, requested as 4326. Shape__Area is NOT trustworthy sq ft.
+- parcel_id has a trailing period (e.g. 02000184.) — clean before Assessment Roll join.
+
+## Warm-start task (needs a fresh full session)
+Write the geometry loop: f=geojson, orderByFields=OBJECTID, page=1000.
+Write each chunk to raw.parcels (geopandas -> PostGIS) as it arrives.
+Resume marker = SELECT COUNT(*) FROM raw.parcels, NOT a Python variable.
+Let it run, confirm final count ~377,863.
+
+
+## Session update (Thu 8/6/2026) — STEP 2 GEOMETRY PULL COMPLETE ✅
+- Full parcel geometry landed: raw.parcels = 377,863 rows, WITH shapes, in PostGIS.
+Confirmed via SELECT COUNT(*) — matches target. Ran ~10 min.
+- BUG HIT + FIXED: schema drift across chunks. First chunk typed property_class as
+bigint; a later chunk had a null → pandas promoted the column to float → Postgres
+rejected "401.0" into a bigint column. Fix: cast all numeric cols to float64 before
+to_postgis, so the table is double precision everywhere and nulls are legal.
+LESSON: the first chunk silently writes the type contract for all 378 chunks.
+- Had to DROP the bad 63k-row table once before re-running. DROP is NOT in the loop
+cell (it would kill the resume marker) — kept it deliberate.
+
+## HOMEWORK (do on laptop tomorrow — this is the learning, not the pull)
+- Write my OWN comments above each block of the Step 2 loop cell, in plain English,
+explaining WHY not WHAT. Four jobs: connect+resume marker / request / clean / write.
+
+## NEXT UP — STEP 3: Assessment Roll (land vs building value split)
+- Smoke-test the Assessment Roll FeatureServer endpoint (returnGeometry=false, 5 rows).
+- Confirm land-value + improvement-value fields + the parcel_id join key.
+- Remember: parcel_id has a TRAILING PERIOD (e.g. "02000184.") — clean before joining.
+- Reminder: laptop CANNOT reach local Postgres — Step 3 DB work waits for desktop.
