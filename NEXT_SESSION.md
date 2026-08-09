@@ -107,3 +107,12 @@ explaining WHY not WHAT. Four jobs: connect+resume marker / request / clean / wr
 - Confirm land-value + improvement-value fields + the parcel_id join key.
 - Remember: parcel_id has a TRAILING PERIOD (e.g. "02000184.") — clean before joining.
 - Reminder: laptop CANNOT reach local Postgres — Step 3 DB work waits for desktop.
+
+
+## Session update (Sun 8/9/2026) 
+- Join key resolved: RTRIM(parcel_id, '.') on both sides, 94.22% match rate
+- Parcels side confirmed unique on normalized ID — no fan-out risk
+- Hyphenated = consolidated parcel ranges; dotted = genuine split parcels. Both meaningful, neither gets stripped
+- Next up: the arms-length sales filter using sale_verification and term_of_sale — the $1 sales have to come out before any price analysis
+- sale_date is text, needs casting
+- Known limitation to document: parcels are a current snapshot, so historical splits/merges aren't captured
