@@ -116,3 +116,40 @@ explaining WHY not WHAT. Four jobs: connect+resume marker / request / clean / wr
 - Next up: the arms-length sales filter using sale_verification and term_of_sale — the $1 sales have to come out before any price analysis
 - sale_date is text, needs casting
 - Known limitation to document: parcels are a current snapshot, so historical splits/merges aren't captured
+
+
+## Session update (Mon 8/10/2026)
+- sale_verification is the WRONG column — it records the source document
+  (affidavit/deed/title co), not whether the price is market evidence. Ruled out.
+- term_of_sale is the instrument. Michigan assessor code set classifying WHY
+  each transfer happened.
+- Filter on LEFT(term_of_sale, 2), not the full string — labels drift
+  ("09-FAMILY" vs "09-FAMILY/RELATED ENTITY", "LENDING" vs "LANDING" typo,
+  two spellings of "20"). Number is the stable key. Same lesson as parcel_id.
+- Codes 19 and 20 (multi-parcel) must be excluded: one price covers several
+  parcels, so joining to a single parcel_id fabricates high outliers.
+- 03-ARM'S LENGTH = 96,752 rows (18.8%), median $45,162, only 319 nominal.
+  Clean.
+- 21-NOT USED/OTHER = 205,909 rows. ~56% nominal, another ~21% under $1k.
+  Real-money rows peak at $1k-10k — a distressed low-value market, NOT
+  mislabeled arms-length sales.
+- DECISION CARRIED FORWARD: two-tier design. Strict tier (03 only) vs wide
+  tier (add 11-EXPOSED, possibly price-floored 21). Run neighborhood medians
+  both ways; where the tiers DIVERGE is the finding.
+- Open question: is the 81% exclusion uniform across neighborhoods? Need
+  retention rate per neighborhood before trusting the strict tier.
+- Deliverable scoped: static choropleth comparison, NOT the interactive map.
+  Interactive version deferred to the Flask phase.
+  
+- NORTH STAR (deliverable shape): Neighborhood Health Index. Score driven by
+  the DIVERGENCE between strict tier (03) and wide tier (all turnover), plus
+  arms-length retention rate + sample size per neighborhood. Small gap = healthy
+  functioning market (Midtown); huge gap = collapsed into distressed turnover
+  (Core City). Map the gap across the city.
+- Build the underlying numbers FIRST (divergence ratio, retention, n).
+  Letter-grade / A-F scale is a presentation layer applied LAST, not first.
+
+### Next session
+1. Cast sale_date text -> date
+2. Retention-rate-by-neighborhood check (the clustering diagnostic)
+3. Then join sales to parcels and start the spatial work
