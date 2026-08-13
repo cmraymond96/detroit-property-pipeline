@@ -149,7 +149,35 @@ explaining WHY not WHAT. Four jobs: connect+resume marker / request / clean / wr
 - Build the underlying numbers FIRST (divergence ratio, retention, n).
   Letter-grade / A-F scale is a presentation layer applied LAST, not first.
 
+
+  ## Session update (Thu 8/13/2026)
+Notes:
+1. Looking at raw.property_sales, we can see that the sales data provides us a longitude/latitude value. That's potentially a big deal for the spatial phase, because distance-to-commercial-hub is computed from a point, and if sales already carry points, part of the reason we were pulling parcel geometry softens. I don't want to overclaim it, though, the choropleth still needs neighborhood boundary polygons to draw regions, which is a different layer from both sales points and parcels, and row 2 shows the coordinates aren't always populated. So it reshapes the spatial dependency, doesn't erase it.
+
+- Terms-of-sale legend built and committed (docs/terms_of_sale_legend.md),
+  derived from MI STC CAMA Data Standards Aug 2025.
+- KEY: assessor's "Recommended L-4015 Type" column = the strict/wide boundary.
+  Conventional = strict tier. Reference = excluded from ratio studies.
+- WIDE TIER NOW HAS A CITABLE SPINE: IAAO 20% rule. Foreclosure-related codes
+  (10/11/17/30/34) become valid ratio inputs when they exceed 20% of a market
+  area — i.e. when distress IS the market. Not a hack; it's the standard.
+- HEADLINE FOUND: retention rate alone does NOT measure market health. Same low
+  retention = opposite stories. Development-driven (13-govt + 19/20 assembly)
+  vs distress-driven (10/11/17/30 foreclosure family + 21 quit-claims).
+  Retention = how thin the arms-length market is. COMPOSITION = why.
+- Confirmed: neighborhood, ecf_neighborhood, council_district all live ON
+  raw.property_sales. Retention is pure sales-side — does NOT depend on the
+  parcels join. Run retention at named `neighborhood` grain (stable denominators).
+- Coverage caveat quantified: ~30,237 sales (blank neighborhood) = ~5% of data.
+  Surface as its own row, don't suppress.
+- PARK for spatial phase: raw.property_sales carries longitude/latitude on SOME
+  rows (populated row 1, blank row 2). May soften the parcel-geometry dependency
+  for distance-to-hub — but choropleth still needs boundary polygons. Revisit.
+
 ### Next session
-1. Cast sale_date text -> date
-2. Retention-rate-by-neighborhood check (the clustering diagnostic)
-3. Then join sales to parcels and start the spatial work
+1. Composition query: per neighborhood, SUM(CASE...) one branch per code family
+   (arms-length / foreclosure-family / government / multi-parcel / other),
+   grouped by neighborhood. This produces the distress-vs-development split.
+2. Cast sale_date text -> date (still outstanding).
+3. THEN join sales to parcels, start spatial.
+
