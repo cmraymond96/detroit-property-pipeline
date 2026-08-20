@@ -181,3 +181,96 @@ Notes:
 2. Cast sale_date text -> date (still outstanding).
 3. THEN join sales to parcels, start spatial.
 
+
+## Session update (Sat 8/15/2026) — GOVERNMENT CHANNEL DECOMPOSITION ✅
+*(logged retroactively — this session was never written up)*
+ 
+- Built `sql/05_profile_government_channels.sql`. Went sideways from the planned
+  composition query on purpose: you can't write a composition query that treats
+  code 13 as ONE bucket when it's 104k rows pointing in opposite directions.
+- FULL CODE INVENTORY run first (what's actually IN the data, not what the CAMA
+  standard says should be). Headline: **13-GOVERNMENT = 104,443 rows, the
+  SECOND-LARGEST transfer type, outnumbering 03-ARM'S LENGTH (96,752).**
+  Code 13 was assumed to be a minor signal; it's the second-biggest category.
+- Label drift VINDICATED the `LEFT(term_of_sale, 2)` decision: codes 09, 11, 20
+  each carry multiple spellings (incl. a "LANDING INSTITUTION" typo in the
+  source data, 6 rows). Grouping on the full string would have split code 11
+  and vanished 6 rows into a phantom bucket.
+- Grantor profile: ~92% of code 13 sits in the top ~20 grantors despite 5,533
+  distinct values. Short head, long junk tail → pattern classification viable.
+- KEY LESSON — cardinality ≠ volume. `TRIM(UPPER())` collapsed only 54 distinct
+  values (~1% of cardinality) but moved ~1,200 ROWS in the head. The long tail
+  is ~5,400 genuinely distinct private names, not whitespace variants. Don't
+  chase them.
+- CHANNEL CLASSIFICATION built (patterns, not a lookup join — grantor is dirty
+  text; dirty text needs LIKE, clean keys get joins):
+    Land Bank 57,993 / Tax Foreclosure 33,011 / Other 5,774 (5.5%) /
+    City Development 4,852 / Private Entity 1,348 / Government 1,272 /
+    Mortgage Foreclosure 193 → **sums to 104,443 ✅**
+- BRANCH ORDER IS LOAD-BEARING. `%P&DD%` must precede `%CITY%OF%DETROIT%`;
+  `%TREAS%` must precede `%WAYNE%COUNTY%`; `%SHERIFF%` before generic county.
+- GOTCHA THAT COST ROWS: `LIKE 'HUD %'` matched NOTHING (after TRIM the value is
+  exactly `HUD`). Silently dropped 497 rows — and a bucket getting SMALLER is
+  far harder to notice than an error. Fixed to `'HUD%'`.
+- Also inert: `LIKE '%CO$'` — `$` is a regex anchor, LIKE only knows `%` and `_`.
+- FINDING: private entities (churches, LLCs, a railroad) appear as GRANTORS in
+  code 13. Reading: code 13 marks a public PROGRAM, not a public GRANTOR. That's
+  a development signal hiding inside the government bucket.
+- CAVEAT RAISED: parcel 06003365 (1566 RICHTON) appears as THREE "sales" —
+  Treasurer → MI Land Bank → Detroit Land Bank → nonprofit. Not three market
+  events; one chain of custody. Threatened the headline. → answered 8/20.
+## Session update (Thu 8/20/2026) — CHAIN-OF-CUSTODY QUANTIFIED ✅
+ 
+- Built `sql/06_profile_parcel_id_duplicates.sql`. Closes file 05's open
+  question 2 (the Richton caveat).
+- **RESULT — the headline SURVIVES and STRENGTHENS:**
+    Government (13):  104,443 rows / 86,624 parcels = 1.21 rows/parcel
+    Arms-length (03):  96,752 rows / 66,461 parcels = 1.46 rows/parcel
+  Arms-length is the MORE duplicated side, so deduplicating both sides WIDENED
+  the ratio from 1.08x (raw rows) to **1.30x (distinct parcels)**.
+- INTERPRETATION — same arithmetic, opposite meanings. Repeat arms-length sales
+  = a house changing hands over time = a functioning market. Repeat government
+  transfers = one property passed between agencies. Only the second is
+  double-counting. The 8/15 caveat assumed repetition was a defect; it's only a
+  defect on one side.
+- METHOD LESSON — the near-miss was concluding the thesis reversed by comparing
+  86,624 *deduplicated* government parcels against 96,752 *raw* arms-length
+  rows. Same error as the original, opposite direction. **Both sides must be
+  measured at the same grain before either number means anything.**
+- SQL GOTCHA — `RTRIM`'s second argument is a CHARACTER SET, not a length.
+  `RTRIM(parcel_id, '.')` peels periods; `RTRIM(parcel_id, 1)` fails (no
+  `rtrim(varchar, integer)` overload). Safe on rows without a period.
+- Also: can't mix a bare column with `COUNT(*)` without `GROUP BY`, and `LIMIT`
+  won't rescue it — LIMIT trims AFTER aggregation.
+- DATA QUALITY — 15 rows have a NULL parcel_id. Visible to `COUNT(*)`, invisible
+  to `COUNT(DISTINCT)`. Slightly understates the true ratio. Handle in staging
+  with the 15 blank term_of_sale rows and 25 `grantor = '0'` rows.
+- Duplication tail reaches **7 hops** on a single parcel.
+- **BIG ONE PARKED:** 66,461 parcels have EVER had an arms-length sale, against
+  377,863 parcels in `raw.parcels` — **under 18% of Detroit property has ever
+  transacted on the open market.** Unfiltered by date, so directional only.
+  Scope to 2017+ and cut by neighborhood before claiming it. This may be the
+  Neighborhood Health Index headline.
+- SCOPE CAVEAT — both queries unfiltered by date; locked window is 2017→present.
+### Next session
+1. **Shape of the duplication**, not just volume. 1.21 could be near-universal
+   double-counting or a heavy 5-7 hop tail. Per-parcel `COUNT(*)` wrapped in an
+   outer frequency count. Matters for the Land Bank split — if many DLBA rows
+   are mid-chain legs rather than terminal dispositions, the grantee
+   classification has to account for it.
+2. **Split the Land Bank** (57,993 rows, the last big undecomposed blob).
+   Grantor = channel; GRANTEE = outcome. DLBA → individual = side-lot giveaway
+   (DISTRESS); DLBA → LLC / INC / nonprofit developer = redevelopment (GROWTH).
+   Corporate-suffix pattern from 05 §3 transfers directly. Watch branch order.
+   Validate channels sum to 57,993.
+3. Decide: fold Mortgage Foreclosure (193) into Tax Foreclosure, or keep
+   separate? **Outstanding since 8/15 — just make the call.**
+4. Cast `sale_date` text → date, then re-run file 06 §2 scoped to 2017+.
+5. THEN the composition query (per neighborhood, one branch per code family).
+   Deferred twice now.
+### Housekeeping
+- Portfolio site: Work section + intro copy shipped 8/17. About / Skills /
+  Contact still placeholder. Diamond cursor still unresolved from July.
+- Sporting KC Data Analyst posting (TeamWork Online, posted 8/17) — cover letter
+  not started. Stretch role; the BIS event-data angle is the hook.
+
