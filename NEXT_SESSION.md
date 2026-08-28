@@ -274,3 +274,85 @@ Notes:
 - Sporting KC Data Analyst posting (TeamWork Online, posted 8/17) — cover letter
   not started. Stretch role; the BIS event-data angle is the hook.
 
+
+## Session update (Fri 8/28/2026) — STAGING LAYER BUILT ✅
+
+- Returned after a break. Session opened with a full thesis/findings review
+  before any build work.
+- **`stg.property_sales` EXISTS.** Built via `10_build_stg_property_sales.sql`
+  (CTAS, drop-and-recreate, idempotent). Verified by
+  `11_validate_stg_property_sales.sql`.
+- **THE BLOCKER IS CLEARED — `sale_date` is now type `date`.** Every finding
+  stamped "directional only, unfiltered by date" is now unblocked. The 2017+
+  window can finally be applied.
+- 514,384 rows in, 514,384 rows out. No rows dropped.
+- KEY ARCHITECTURAL CALL — staging is NOT filtered to 2017+. Staging CLEANS;
+  marts DECIDE. Casting text→date is cleaning (something was objectively wrong).
+  Filtering to 2017 is an opinion about scope, and opinions belong downstream
+  where they are a WHERE clause instead of a rebuild. Reinforced by the data
+  being left-censored at 2011 — pre-2017 rows are the only baseline that will
+  ever exist.
+- DIRT PILE RESOLVED, and three of four collapse to one pattern: **a placeholder
+  becomes an explicit absence.**
+    NULL parcel_id      → leave (self-enforcing; drops out of joins + DISTINCT)
+    blank term_of_sale  → NULL
+    grantor = '0'       → NULL
+    2026-12-17 date     → null the FIELD, keep the row
+- WHY THE FUTURE DATE WAS THE OUTLIER — it is the only defect that SURVIVES a
+  `>= 2017` filter. The others produce a missing answer; this one produces a
+  WRONG answer, and it would become `MAX(sale_date)`.
+- DETERMINISM — the vintage bound is hardcoded (`DATE '2026-08-01'`), not
+  `CURRENT_DATE`. `CURRENT_DATE` makes the build's output depend on the day it
+  runs. **Transformation logic stays deterministic; DETECTION is what should be
+  dynamic** — hence §1.4 in the validation file.
+- NEW DERIVED COLUMN — `sale_type_code`. The `LEFT(term_of_sale, 2)` parse has
+  been retyped by hand since file 02. Materializing the stable key is cleaning;
+  grouping codes into families stays a mart/`ref` decision.
+- POSTGRES GOTCHA — unquoted identifiers fold to lowercase, so `"ObjectId"`
+  requires quotes forever. Aliased to `objectid` at the staging boundary so no
+  downstream query ever quotes again.
+- CTAS GOTCHA — column types are DERIVED FROM THE SELECT. The cast IS the schema
+  definition. Omit it and the column is silently text again, with no error.
+  A near-miss this session: the first CASE draft returned `sale_date` unchanged
+  in both branches.
+- MISSING-COMMA TRAP — `AS` is optional in Postgres, so a dropped comma between
+  two bare columns parses as an alias. No error, one column lost and another
+  renamed. Explicit column lists get read twice before they get run.
+- METHOD LESSON — a validation check is only as good as the PROVENANCE of the
+  number it checks against. `null_grantors` and `null_parcels` looked like
+  failures; the expected figures had been lifted out of their WHERE-clause
+  context (the 15 was a code-13-only count).
+- PROCESS CHANGE — from this file forward Caden writes the header blocks and
+  Claude reviews them, matching the existing arrangement on code. Rationale: an
+  interviewer asks you to explain the decision live, not recite the comment.
+- LOST WORK — Monday 8/24's staging draft was never committed and was gone.
+  Rebuilt from scratch. **Commit before closing, every time.**
+
+- **RECONCILIATION PASSES.** File 11 §1.2: 171 already-NULL grantors + 1,137
+  placeholder '0' = 1,308 exactly; parcels 1,238 = 1,238 exactly. Zero
+  unexplained rows.
+- **OPEN — 45x GAP.** File 05 recorded 25 `grantor = '0'` rows; §1.2 returns
+  1,137. Either file 05's figure was code-13-scoped (provenance, same trap as
+  the parcel count) or `TRIM` is catching ~1,112 whitespace-padded placeholders
+  that were invisible to every pre-staging query. §1.5 disambiguates. If it is
+  the latter, the blanket TRIM rule is load-bearing, not cosmetic — and that is
+  a portfolio anecdote.
+
+### Next session
+1. Run file 11 §1.4 and §1.5, record results. Closes the reconciliation and the
+   grantor gap.
+2. **Re-run file 06 §2 scoped to 2017+.** First real payoff of the staging
+   layer — confirms whether the 1.30x ratio holds inside the locked window.
+3. Re-check the under-18%-ever-transacted headline against the same window.
+4. Shape of the duplication (per-parcel COUNT(*) wrapped in an outer frequency
+   count).
+5. Split the Land Bank (57,993) by GRANTEE — outcome, not channel.
+6. THEN the composition query. Deferred three times.
+
+### Housekeeping
+- Detroit pipeline still not on the resume. Blocks further sports org
+  applications.
+- Repo files sit at root, not under `sql/`. Numbering now implies 01–09 =
+  profiling, 10+ = builds. Worth a tidy pass at some point, not urgent.
+
+
