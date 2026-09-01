@@ -8,7 +8,8 @@
 --   the build script so verification can be re-run without rebuilding, and so
 --   the build stays a build.
 --
--- Run date: 2026-08-28
+-- Run date: 2026-08-28 (sections 1.1-1.3)
+--           2026-08-31 (sections 1.4-1.5) -- FILE NOW COMPLETE
 -- =============================================================================
 
 
@@ -75,6 +76,8 @@ FROM stg.property_sales;
 --            placeholders that were invisible to every pre-staging query.
 --      Section 1.5 disambiguates. Answer matters: (b) would mean the blanket
 --      TRIM rule is load-bearing rather than cosmetic.
+--
+--      >>> RESOLVED 2026-08-31 in S1.5 -- explanation (a), PROVENANCE. <<<
 -- -----------------------------------------------------------------------------
 SELECT
     COUNT(*) FILTER (WHERE grantor IS NULL)        AS raw_null_grantor,
@@ -112,7 +115,25 @@ WHERE table_schema = 'stg'
 --      where that gap is covered: if this returns more than 1, the source has
 --      published additional impossible dates and the bound needs review.
 --
---      RESULT: [ TO RUN -- record here ]
+--      RESULT (2026-08-31):
+--        rows_beyond_vintage   1
+--
+--      [PASS] Exactly 1, and it is the already-known row: sale_date 2026-12-17,
+--      roughly 3.5 months ahead of the run date. Recorded sales are backward-
+--      looking -- a deed is recorded AFTER the transaction, never before -- so
+--      a future record date is a data-entry error, not a scheduled sale.
+--      Already nulled by the build's CASE, which is why 1.1 shows null_dates = 1.
+--      No NEW impossible dates have appeared. Bound does not need review.
+--
+--      NOTE ON SAFETY -- this cast is unguarded (TRIM(sale_date)::date against
+--      raw, where the column is still text). It is safe only because file 10
+--      already cast every row in the table without error, which empirically
+--      proves every value is castable. Worth knowing that the CASE in file 10
+--      does NOT provide that protection: both of its branches cast, so it
+--      decides whether to KEEP a result, never whether to ATTEMPT one. It is a
+--      future-date filter, not a bad-value guard. If the source ever ships a
+--      non-castable value, THIS query is where it will surface -- as a hard
+--      error, not a wrong number.
 -- -----------------------------------------------------------------------------
 SELECT COUNT(*) AS rows_beyond_vintage
 FROM raw.property_sales
@@ -129,7 +150,40 @@ WHERE TRIM(sale_date)::date > DATE '2026-08-01';
 --                                   catching ~1,112 padded placeholders that
 --                                   were invisible to every earlier query.
 --
---      RESULT: [ TO RUN -- record here ]
+--      RESULT (2026-08-31):
+--        exact_zero_all      1,137
+--        trimmed_zero_all    1,137
+--        exact_zero_code13      25
+--
+--      [RESOLVED -- explanation (a), PROVENANCE.] Two independent reads, same
+--      answer:
+--        - exact = trimmed = 1,137. TRIM changed NOTHING for these rows, so
+--          there is no hidden whitespace. Explanation (b) is dead.
+--        - Reproducing file 05's exact conditions (grantor = '0' AND code 13)
+--          returns exactly 25. The old figure was never a citywide count. It
+--          was 25 WITHIN the government bucket, written into the dirt pile
+--          without its scope tag attached.
+--
+--      The 1,137 was always there. It had simply never been looked at outside
+--      code 13.
+--
+--      [COROLLARY for the 8/15 note] The ~1,200 rows that TRIM(UPPER()) moved in
+--      the grantor head on 8/15 were REAL grantor names carrying stray
+--      whitespace -- not these '0' placeholders. Two separate phenomena that
+--      happened to sit at a similar magnitude. Do not merge them in the writeup.
+--
+--      [SECOND INSTANCE OF THE SAME TRAP] This is now twice in one file that a
+--      figure from file 05/06 read as a mismatch purely because it was lifted
+--      out of a WHERE clause (the 15 NULL parcel_ids in 1.1, the 25 grantors
+--      here). Both times the data was fine and the EXPECTATION was wrong.
+--      Going forward: record the scope alongside any number carried between
+--      files. A count without its WHERE clause is not a fact.
+--
+--      [OPEN -- low priority] If only 25 of the 1,137 sit in code 13, the other
+--      ~1,112 are concentrated somewhere else. Code 13 has real named grantors
+--      (Land Bank, Treasurer); the 205,909-row code 21 grab-bag is the likely
+--      home. Not blocking -- but worth a one-line GROUP BY before the grantor
+--      field is used analytically.
 -- -----------------------------------------------------------------------------
 SELECT
     COUNT(*) FILTER (WHERE grantor = '0')                                   AS exact_zero_all,
@@ -137,3 +191,16 @@ SELECT
     COUNT(*) FILTER (WHERE grantor = '0'
                        AND LEFT(term_of_sale, 2) = '13')                    AS exact_zero_code13
 FROM raw.property_sales;
+
+
+-- =============================================================================
+-- VALIDATION VERDICT
+-- =============================================================================
+-- stg.property_sales PASSES. 514,384 rows in, 514,384 out, sale_date typed as
+-- date, all five checks green. Three known data-quality items remain, all
+-- characterized and none blocking:
+--     1,238 NULL parcel_id  -- self-enforcing, drops out of joins and DISTINCT
+--     1,308 NULL grantor    -- 171 already null + 1,137 '0' placeholders
+--         1 NULL sale_date  -- the 2026-12-17 transposition
+-- Downstream layers may build on this table.
+-- =============================================================================
