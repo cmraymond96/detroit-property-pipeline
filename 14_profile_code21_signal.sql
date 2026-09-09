@@ -447,13 +447,50 @@ FROM metrics;
 --    settle it.
 --
 -- 5. CODE 21 COMPOSITION IS ITSELF A SIGNAL.
---    pct_of_21_real correlates with arms-length share at r = 0.508
---    across 117 neighborhoods, monotonic across quintiles. This is
---    the finding the thesis rests on, and the one that does not
---    depend on any individual code 21 sale being admissible --
---    a $45,000 transfer of any kind does not occur in a neighborhood
---    where nothing is worth $45,000.
---    Pending the independent re-test in open question F.
+--
+--    RE-EVALUATION (file 15):
+--    The original r = 0.508 was measured against a health proxy that
+--    shared a denominator with the signal it was tested against --
+--    n_21 sat on the bottom of both. File 15 re-ran the correlation
+--    against two proxies containing no code 21 at all.
+--
+--    All three tests correlate the same two things, at neighborhood
+--    grain, one value per neighborhood:
+--
+--      variable 1 (the health proxy) -- how much of a neighborhood's
+--        property movement is genuine market sale rather than
+--        government transfer
+--      variable 2 (the signal) -- how much of that same
+--        neighborhood's code 21 bucket is real money rather than
+--        nominal paperwork
+--
+--    Across 117 neighborhoods, each contributing one pair.
+--
+--    Only the proxy changed between tests. The signal,
+--    n21_rm / n_21, is identical in all three:
+--
+--      health proxy                        r
+--      n_03    / (n_21    + n_03)          0.508   original, superseded
+--      n03_rm  / (n03_rm  + n_13)          0.635   file 15, proxy 1
+--      n_03    / (n_03    + n_13)          0.631   file 15, proxy 2
+--
+--    Same population across all three, so the numbers are directly
+--    comparable. The two new proxies were built to answer two
+--    separate objections -- a shared count in proxy 1, a shared $10k
+--    price threshold in proxy 2 -- and they agree to within 0.004,
+--    which means the relationship does not depend on which
+--    instrument is chosen to measure health.
+--
+--    The direction matters as much as the magnitude. If the original
+--    0.508 had been inflated by the shared denominator, removing
+--    n_21 would have pushed r down. It went up. The shared count was
+--    not propping the finding up; it was slightly suppressing it.
+--
+--    Monotonic across quintiles. This is the finding the thesis
+--    rests on, and the one that does not depend on any individual
+--    code 21 sale being admissible -- a $45,000 transfer of any kind
+--    does not occur in a neighborhood where nothing is worth $45,000.
+--    
 --
 -- 6. CODE 21 REPEATS THE CODE 13 PATTERN.
 --    One label covering two opposite phenomena: genuine transactions
