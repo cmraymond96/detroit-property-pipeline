@@ -538,7 +538,12 @@ FROM metrics;
 --    included in Section 3 totals and sits at 37.5% real-money 21,
 --    a large positive residual. Still not understood. From file 13.
 --
--- F. *** NEXT SESSION, HIGHEST PRIORITY ***
+-- F. *** CLOSED -- see file 15 ***
+--    [what was asked]
+--    [what settled it]
+--    [the outcome, including how it compared to the prediction above]
+--    
+--    *** NEXT SESSION, HIGHEST PRIORITY ***
 --    Re-run Section 5 against a health proxy that contains no code 21
 --    term. File 13 already has government-family (code 13) counts per
 --    neighborhood, which are fully independent of both variables.
@@ -549,7 +554,7 @@ FROM metrics;
 --    denominator and finding 5 must be withdrawn.
 --
 -- G. Is the Section 5 residual measuring channel behaviour
---    (transition vs stable) rather than health? File 15.
+--    (transition vs stable) rather than health? File 16.
 --
 --
 -- ==================================================================
