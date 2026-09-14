@@ -346,6 +346,9 @@ ORDER BY pct_market_lost DESC;
 -- !! being tested (n21_rm / n_21). A shared term can manufacture
 -- !! correlation. See open question F. This must be re-run against
 -- !! a proxy with no code 21 in it before the result is trusted.
+--
+-- !! RESOLVED, see file 15. Re-run against two proxies with no code 21 term, returning 0.635 and 0.631 across the same 117 neighborhoods. 
+-- !! The shared denominator was not manufacturing the correlation. Removing it raised r rather than lowering it.
 -- ==================================================================
 
 WITH by_hood AS (
@@ -538,12 +541,7 @@ FROM metrics;
 --    included in Section 3 totals and sits at 37.5% real-money 21,
 --    a large positive residual. Still not understood. From file 13.
 --
--- F. *** CLOSED -- see file 15 ***
---    [what was asked]
---    [what settled it]
---    [the outcome, including how it compared to the prediction above]
---    
---    *** NEXT SESSION, HIGHEST PRIORITY ***
+-- F.  *** NEXT SESSION, HIGHEST PRIORITY ***
 --    Re-run Section 5 against a health proxy that contains no code 21
 --    term. File 13 already has government-family (code 13) counts per
 --    neighborhood, which are fully independent of both variables.
@@ -552,6 +550,15 @@ FROM metrics;
 --    If r holds near 0.5, finding 5 is solid and the thesis stands.
 --    If r collapses, the correlation was an artifact of the shared
 --    denominator and finding 5 must be withdrawn.
+
+--    *** CLOSED -- see file 15 ***
+--    Open question F, marked closed, pointing at file 15. The question was whether the 0.508
+--    survived a health proxy containing no code 21 term. It was settled by two proxies — the price-
+--    filtered arms-length-versus-government ratio, and the unfiltered version — both run across
+--    the same 117 neighborhoods. Result: 0.635 and 0.631. The prediction written above was that r
+--    holding near 0.5 would mean finding 5 was solid. It came back higher than that, on both
+--    proxies, and the two independent ones agree to within four thousandths. Finding 5 stands,
+--    strengthened rather than withdrawn.
 --
 -- G. Is the Section 5 residual measuring channel behaviour
 --    (transition vs stable) rather than health? File 16.
