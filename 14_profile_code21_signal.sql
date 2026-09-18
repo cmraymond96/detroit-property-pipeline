@@ -334,6 +334,10 @@ ORDER BY pct_market_lost DESC;
 -- ------------------------------------------------------------------
 -- !! NOT YET RUN AGAINST THE DATABASE. Figures below were computed
 -- !! outside Postgres from the Section 4 export. Run and verify.
+-- !!
+-- !! SUPERSEDED. These figures were computed outside Postgres and
+-- !! never verified against the database. Moot: the proxy they rest
+-- !! on was replaced in file 15. See finding 5 for current figures.
 --
 -- Hypothesis: pct_of_21_real is higher where the arms-length market
 -- is stronger -- i.e. code 21's internal composition is itself a
@@ -398,6 +402,10 @@ FROM metrics;
 -- signals, and the disagreement may carry more information than the
 -- agreement. Residuals from the fit:
 --
+-- !! SUPERSEDED -- fit against the replaced proxy. Recomputed in
+-- !! file 16 at +/- 1 SD, 35 neighborhoods. Membership largely held;
+-- !! magnitudes moved; Corktown was mis-ranked (below).
+--
 --   CODE 21 STRONGER THAN ARMS-LENGTH PREDICTS (positive residual):
 --     Woodbridge +19.9, Corktown +18.6, Midtown +17.7,
 --     East English Village +17.7, [blank] +16.8, Martin Park +13.3,
@@ -412,6 +420,28 @@ FROM metrics;
 -- the city, alongside McDougall-Hunt) but pct_of_21_real 35.3% (near
 -- the top). The two signals point in opposite directions.
 --
+-- !! STRUCK -- claim was false. See file 16.
+-- !! Original claim: Corktown arms_share 23.8% (near the bottom of
+-- !! the city, alongside McDougall-Hunt) but pct_of_21_real 35.3%
+-- !! (near the top) -- the two signals pointing in opposite
+-- !! directions.
+-- !!
+-- !! Under the new proxy Corktown's arms_share is 81.4%, near the
+-- !! TOP of the city. It is high on both measures, and its residual
+-- !! halved from +18.6 to +9.3, dropping it from first to seventh.
+-- !!
+-- !! Cause: Corktown carries enormous code 21 volume. The old proxy,
+-- !! n_03 / (n_21 + n_03), put that volume in its denominator, which
+-- !! suppressed Corktown's apparent market share. The new proxy
+-- !! measures arms-length against the government channel instead.
+-- !!
+-- !! Note what did and did not fail here. The CORRELATION survived
+-- !! the proxy swap and strengthened (see finding 5). What failed
+-- !! was the RANKING of individual neighborhoods -- and it failed
+-- !! worst where code 21 volume is highest, which is exactly where
+-- !! this analysis is aimed. A fit can be broadly right while the
+-- !! rows underneath it are badly placed.
+--
 -- The positive-residual list reads as neighborhoods in transition;
 -- the negative-residual list reads as stable conventional markets
 -- where everything real moves through code 03. If that holds, the
@@ -420,7 +450,8 @@ FROM metrics;
 --
 -- DO NOT claim this yet. It is seven neighborhoods per side and the
 -- pattern is being read off a list, which is the same thin inference
--- flagged in finding 4 below. This is the file 15 question.
+-- This is the file 16 question. (File 15 became the re-test of the
+-- correlation itself.)
 
 
 -- ==================================================================
@@ -541,7 +572,7 @@ FROM metrics;
 --    included in Section 3 totals and sits at 37.5% real-money 21,
 --    a large positive residual. Still not understood. From file 13.
 --
--- F.  *** NEXT SESSION, HIGHEST PRIORITY ***
+-- F.  *** CLOSED -- see file 15 ***
 --    Re-run Section 5 against a health proxy that contains no code 21
 --    term. File 13 already has government-family (code 13) counts per
 --    neighborhood, which are fully independent of both variables.
@@ -552,7 +583,7 @@ FROM metrics;
 --    denominator and finding 5 must be withdrawn.
 
 --    *** CLOSED -- see file 15 ***
---    Open question F, marked closed, pointing at file 15. The question was whether the 0.508
+--    The question was whether the 0.508
 --    survived a health proxy containing no code 21 term. It was settled by two proxies — the price-
 --    filtered arms-length-versus-government ratio, and the unfiltered version — both run across
 --    the same 117 neighborhoods. Result: 0.635 and 0.631. The prediction written above was that r
