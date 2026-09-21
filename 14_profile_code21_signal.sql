@@ -426,7 +426,7 @@ FROM metrics;
 -- !! (near the top) -- the two signals pointing in opposite
 -- !! directions.
 -- !!
--- !! Under the new proxy Corktown's arms_share is 81.4%, near the
+-- !! Under proxy 2, n_03 / (n_03 + n_13), Corktown's arms_share is 81.4%, near the
 -- !! TOP of the city. It is high on both measures, and its residual
 -- !! halved from +18.6 to +9.3, dropping it from first to seventh.
 -- !!

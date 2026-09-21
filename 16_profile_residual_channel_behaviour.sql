@@ -47,16 +47,25 @@
 -- ------------------------------------------------------------------
 -- DECISIONS
 -- ------------------------------------------------------------------
--- [DECISION] Fit against proxy 1, n03_rm / (n03_rm + n_13).
---   Reason: the real-money concept stays consistent with downstream
---   work in the mart layer.
---   COUNTERARGUMENT ON RECORD: proxy 1 shares a $10,000 price
---   threshold with the signal. For the CORRELATION that was worth
---   0.004 (file 15, proxy 2). A residual analysis studies
---   disagreement rather than agreement, so the threshold could
---   plausibly matter more here than it did there. Refitting against
---   proxy 2 and comparing membership is cheap and not yet done.
---   TODO(caden).
+-- [DECISION] Fit against proxy 2, n_03 / (n_03 + n_13) -- unfiltered.
+--   Reason: both terms are raw counts, so it cleanly measures channel
+--   composition -- of all transfers moving through either the market
+--   or the government, what share moves through the market. It also
+--   shares no price threshold with the signal, which matters more
+--   for a residual analysis (studying disagreement) than it did for
+--   the correlation (studying agreement).
+--
+--   Proxy 1, n03_rm / (n03_rm + n_13), was the choice originally
+--   named here, and this header said so while the query ran proxy 2.
+--   Corrected 2026-09-21. On inspection proxy 1 is the weaker
+--   instrument: it price-filters code 03 but not code 13, so it mixes
+--   a filtered count with an unfiltered one. And the filter barely
+--   bites on that side anyway -- code 03 is already 94.8% above $10k
+--   (file 14, finding 2).
+--
+--   The real-money filter earns its place on the SIGNAL side, where
+--   it separates transactions from paperwork inside code 21. On the
+--   health proxy side it does not.
 --
 -- [DECISION] Cut at +/- 1 standard deviation of the residuals,
 --   rather than a top-N.
@@ -169,6 +178,124 @@ ORDER BY residual DESC;
 --
 --
 -- ==================================================================
+-- SECTION 2 -- ROBUSTNESS CHECK: REFIT AGAINST PROXY 1
+-- ==================================================================
+-- Section 1 fit the residuals against proxy 2. This section refits
+-- them against proxy 1 to check whether the residual structure
+-- depends on the choice of ruler. The only change:
+--
+--   proxy 2 (Section 1):   n_03   / (n_03   + n_13)
+--   proxy 1 (this run):    n03_rm / (n03_rm + n_13)
+--
+-- Proxy 1 is the weaker instrument. It price-filters code 03 but not
+-- code 13, so it mixes a filtered count with an unfiltered one. And
+-- the filter barely bites on that side anyway -- code 03 is already
+-- 94.8% above $10k (file 14, finding 2).
+--
+-- PREDICTION, set before running: at least 30 of the 35
+-- neighborhoods beyond +/- 1 SD under proxy 2 will remain beyond it
+-- under proxy 1.
+--
+-- Reasoning: because code 03 is 94.8% above $10k, the swap removes
+-- only about 5% of arms-length rows, so each neighborhood's
+-- arms_share should shift only slightly. The shift will be somewhat
+-- larger in cheaper neighborhoods, where more code 03 sales fall
+-- under $10k. Several neighborhoods in Section 1 sit just past the
+-- cutoff (+5.3, -5.3, +5.5), and the cutoff itself moves slightly
+-- because the SD is recomputed from the new residuals -- so a few
+-- edge cases may flip. The large residuals (+17.2, -11.2) should not.
+--
+-- Counted in both directions: neighborhoods that DROP OUT of the
+-- +/- 1 SD list, and neighborhoods that NEWLY ENTER it.
+--
+-- INTERPRETATION BANDS, set before running:
+--   30 or more held  -> robust. The residual structure does not
+--                       depend on the ruler. One line in the
+--                       findings, move on.
+--   20 to 29 held    -> partly sensitive. Report which neighborhoods
+--                       moved and whether they share a trait (e.g.
+--                       low price). Findings built on the edge cases
+--                       get softened.
+--   19 or fewer held -> sensitive. The price filter is doing work in
+--                       the residuals that it did not do in the
+--                       correlation. That is itself a finding, and
+--                       the residual analysis has to name which
+--                       ruler it rests on and why.
+-- ==================================================================
+
+WITH by_hood AS (
+    SELECT
+        neighborhood,
+        COUNT(*) FILTER (WHERE sale_type_code = '21')                 AS n_21,
+        COUNT(*) FILTER (WHERE sale_type_code = '21'
+                           AND amt_sale_price >= 10000)               AS n21_rm,
+        COUNT(*) FILTER (WHERE sale_type_code = '03'
+							AND amt_sale_price >= 10000)                 AS n03_rm, -- price filtered
+        COUNT(*) FILTER (WHERE sale_type_code = '13')                 AS n_13
+    FROM stg.property_sales
+    WHERE sale_date >= DATE '2017-01-01'
+      AND sale_type_code IN ('21','03','13')
+    GROUP BY neighborhood
+),
+metrics AS (
+    SELECT
+        neighborhood,
+        100.0 * n03_rm   / NULLIF(n03_rm + n_13, 0)  AS arms_share_real,      -- the ruler
+        100.0 * n21_rm / NULLIF(n_21, 0)         AS pct_of_21_real   -- the signal
+    FROM by_hood
+    WHERE n_21 >= 300                                                -- same population as files 14, 15
+),
+fit AS (
+    SELECT
+        REGR_SLOPE(pct_of_21_real, arms_share_real)     AS slope,         -- dependent variable first
+        REGR_INTERCEPT(pct_of_21_real, arms_share_real) AS intercept
+    FROM metrics
+),
+resid AS (
+    SELECT
+        m.neighborhood,
+        m.arms_share_real,
+        m.pct_of_21_real,
+        f.slope * m.arms_share_real + f.intercept                      AS predicted,
+        m.pct_of_21_real - (f.slope * m.arms_share_real + f.intercept) AS residual
+    FROM metrics m
+    CROSS JOIN fit f
+)
+SELECT
+    neighborhood,
+    ROUND(arms_share_real::numeric, 1)      AS arms_share_real,
+    ROUND(pct_of_21_real::numeric, 1)  AS pct_of_21_real,
+    ROUND(residual::numeric, 1)        AS residual
+FROM resid
+CROSS JOIN (SELECT STDDEV(residual) AS sd FROM resid) s
+WHERE ABS(residual) >= s.sd
+ORDER BY residual DESC;
+
+-- =================================================================
+-- RESULT (2026-09-21) -- 34 neighborhoods beyond +/- 1 SD
+-- =================================================================
+--
+--   Held:      34 of 35 (all 19 positive, 15 of 16 negative)
+--   Dropped:   Mount Olivet (-5.3 under proxy 2, an edge case)
+--   Entered:   none
+--
+-- PREDICTION CONFIRMED. Predicted at least 30 held; 34 did. Robust
+-- band: the residual structure does not depend on the ruler.
+--
+-- Both parts of the reasoning held. The one neighborhood that moved
+-- was an edge case sitting just past the cutoff. And arms_share
+-- shifted most in cheaper neighborhoods (Campau/Banglatown -2.7,
+-- Airport Sub -2.6, Cadillac Heights -2.5) and not at all at the top
+-- (University District, East English Village unchanged) -- because
+-- that is where code 03 sales under $10k concentrate. Residuals
+-- moved by 0.4 or less throughout: the line shifted with the ruler,
+-- so the gaps barely changed.
+--
+-- Positive list order is identical under both proxies. The
+-- residual findings below rest on proxy 2 (Section 1) and are
+-- confirmed on proxy 1 (this section).
+--
+-- ==================================================================
 -- [FINDING] THE PATTERN SURVIVED THE PROXY SWAP
 -- ==================================================================
 -- All seven file 14 positive names are still positive: [blank],
@@ -179,7 +306,7 @@ ORDER BY residual DESC;
 --
 -- Magnitudes moved; membership largely did not. The residual
 -- structure is a property of the data, not of the discarded proxy.
---
+-- Confirmed on proxy 1 in Section 2: 34 of 35 held.
 --
 -- ==================================================================
 -- [FINDING] CORKTOWN WAS MIS-RANKED BY THE OLD PROXY
@@ -261,9 +388,12 @@ ORDER BY residual DESC;
 --    on the positive side only, and the negative side needs its own
 --    account.
 --
--- 3. REFIT AGAINST PROXY 2 and compare membership beyond +/- 1 SD.
---    If the lists largely overlap, the $10k threshold is not doing
---    work here and one line says so. If they diverge, that is
+-- 3. [DONE: See Section 2] REFIT AGAINST PROXY 1 as a robustness check, and compare
+--    membership beyond +/- 1 SD. Proxy 1 is the weaker instrument
+--    (see DECISIONS), so this checks whether the residual structure
+--    depends on the choice of ruler. Heavy overlap: one line saying
+--    so, done. Divergence: the price filter is doing work in the
+--    residuals that it did not do in the correlation, and that is
 --    itself a finding.
 --
 -- 4. THE [blank] NEIGHBORHOOD is the largest positive residual in
