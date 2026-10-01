@@ -1,0 +1,110 @@
+-- =============================================================================
+-- 17_profile_negative_residual_asymmetry.sql
+-- =============================================================================
+-- DRAFT HEADER -- 2026-10-01. Slots 3 and 4 are Claude's scaffolding of what
+-- was worked out verbally; rewrite in own words before this file is finished.
+--
+-- QUESTION
+--      File 16 cut the 117 neighborhoods at +/-1 SD and returned 16 with
+--      negative residuals -- less real money inside code 21 than the fitted
+--      line predicted. Those 16 do not look like one kind of place.
+--      University District sits there at 96.0% arms_share; Airport Sub sits
+--      there at 13.8%.
+--
+--      File 17 tests whether those 16 are one population or two:
+--      whether the high-arms_share members (conventional market functioning,
+--      so nothing real needs the catch-all) are genuinely a different kind of
+--      neighborhood from the low-arms_share members (little real money moving
+--      through any channel at all) -- or whether all 16 sit on one continuum
+--      and the apparent split is an artifact of sampling its ends.
+--
+-- WHY TURNOVER PER PARCEL
+--      Defined as: total transfers (2017+) / total parcels, one value per
+--      neighborhood. Nothing is computed at parcel grain, so no single
+--      high-churn parcel can move a neighborhood's figure.
+--
+--      It is a fair test because of its DENOMINATOR. Every ratio used in this
+--      case study so far has been transfers over transfers --
+--      n_03/(n_03+n_13), n21_rm/n_21. The residuals were computed from one of
+--      those. Splitting the 16 by any further transfer-code ratio would be
+--      reading the scatter plot back to itself.
+--
+--      Turnover divides by PARCELS -- physical housing stock, a different
+--      table, untouched by how any transfer was coded. arms_share cannot
+--      contaminate it.
+--
+-- [DECISION] ALL PARCELS, NOT RESIDENTIAL-ONLY
+--      raw.parcels carries property_class_description, but the transfer side
+--      was never filtered by property class. Filtering only the denominator
+--      would put a filtered count over an unfiltered one -- the same error
+--      that disqualified proxy 1 in file 16. Consistency over precision.
+--      Cost: commercial-heavy areas (Downtown) carry inflated denominators.
+--      Stated, not corrected.
+--
+-- [DECISION] CARRY pct_unimproved ALONGSIDE TURNOVER
+--      Turnover is itself ambiguous -- the same low value means "stable, people
+--      stay put" or "dead, nothing moves." Same number, opposite causes. This
+--      is the through-line again (code 13, retention rate, code 21, residual
+--      sign -- now turnover).
+--
+--      A vacant lot is still a parcel: it has an ID, an owner, a tax row. So
+--      bare land does not shrink the denominator -- it fills it with things
+--      that rarely transact, DEFLATING the rate arithmetically whether or not
+--      the market is distressed. share of is_improved = 0 is what tells the
+--      two readings apart.
+--
+-- PREDICTION (pre-registered)
+--      HIGH-arms_share negatives (University District 96.0, Schaefer 7/8 Lodge
+--      90.0, McDowell 88.2, Aviation Sub 86.7, Schulze 86.3, The Eye 85.8,
+--      Evergreen-Outer Drive 81.5, Berg-Lahser 80.8, Evergreen Lahser 7/8 78.1)
+--      -> turnover at or near the city median, vacancy unremarkable. The
+--      conventional market works; code 21 is simply not needed.
+--
+--      LOW-arms_share negatives (Airport Sub 13.8, Riverbend 17.1, Cadillac
+--      Heights 20.2, Northeast Central District 43.5)
+--      -> turnover in the bottom quartile. Two sub-cases, and they are not
+--      equally interesting:
+--        (a) low turnover + HIGH pct_unimproved -> vacancy explains the
+--            arithmetic; little learned.
+--        (b) low turnover + vacancy comparable to the rest of the city -> the
+--            dead-market reading survives a real challenge. This is the
+--            result worth having.
+--
+-- KILL CONDITION
+--      Two populations requires a GAP -- the high group clustered at one
+--      turnover level, the low group at another, with visible separation
+--      between them. If instead all 16 spread smoothly across the turnover
+--      range with no break, there are not two kinds of neighborhood. There is
+--      one gradient, and file 16 sampled its ends. The channel-behaviour
+--      hypothesis would then hold on the positive side only, and the negative
+--      side would need its own account.
+--
+-- BASELINE
+--      Turnover per parcel is meaningless alone. Compare the 16 against the
+--      distribution across all 117 -- median and quartiles, not the mean, so
+--      "normal" is a range rather than a point. Same logic as file 16's SD cut:
+--      let the data's spread define the boundary.
+--
+-- [NOTE] JOIN VERIFIED 2026-09-24
+--      stg.property_sales has 204 distinct neighborhoods; raw.parcels has 205.
+--      One unmatched: NULL (not the string '[blank]'). That is the ~14,600-
+--      transfer unnamed population carried since file 13. It drops out of the
+--      join. Acceptable here -- it is a POSITIVE residual and this file tests
+--      the negatives. Still unexplained.
+--
+-- [NOTE] TIME MISMATCH
+--      Transfers are windowed 2017+. raw.parcels is a present-day snapshot.
+--      transfers_2017plus / parcels_today is therefore not a clean rate.
+--      Defensible, but an assumption, and stated as one.
+--
+-- NEXT
+--      1. Verify what is_improved actually means before relying on it:
+--         (a) cross-tab is_improved against property_class_description --
+--             every VACANT class should land on 0, every IMPROVED on 1;
+--         (b) check against year_built -- is_improved = 0 rows should be
+--             null/zero almost without exception.
+--         Cite the definition in this header once confirmed.
+--      2. Build the turnover query: parcel_counts -> turnover -> quartiles,
+--         final SELECT restricted to the 16 negative-residual neighborhoods.
+--      3. Rewrite slots 3 and 4 in own words.
+-- =============================================================================
